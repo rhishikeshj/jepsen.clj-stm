@@ -24,18 +24,23 @@
 ;; list-append client
 
 
-(def la-state (ref {}))
+(def la-state (atom {}))
 
 
 (defn run-txn
   [[op k v]]
   (case op
-    :r [:r k (get @la-state k)]
+    :r [:r k (if-let [v' (get @la-state k)]
+               @v'
+               nil)]
     :append (do
-              (dosync (alter la-state
-                             assoc
-                             k
-                             (conj (get @la-state k []) v)))
+              (swap! la-state
+                     (fn [m]
+                       (dosync (update m
+                                       k
+                                       #(if %
+                                          (ref (alter % conj v))
+                                          (ref [v]))))))
               [op k v])))
 
 
