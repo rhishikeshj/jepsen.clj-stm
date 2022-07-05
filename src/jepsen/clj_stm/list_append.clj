@@ -36,12 +36,19 @@
     :append (do
               (swap! la-state
                      (fn [m]
-                       (dosync (update m
-                                       k
-                                       #(if %
-                                          (ref (alter % conj v))
-                                          (ref [v]))))))
-              [op k v])))
+                       (update m
+                               k
+                               #(if %
+                                  (ref (alter % conj v))
+                                  (ref [v])))))
+              [op k v])
+    [op k v]))
+
+
+(defn run-txns
+  [txns]
+  (dosync
+    (vec (map run-txn txns))))
 
 
 (defrecord LAClient
@@ -60,7 +67,7 @@
   (invoke!
     [this test op]
     (let [txns (:value op)
-          txns' (vec (map run-txn txns))]
+          txns' (run-txns txns)]
       (assoc op :type :ok :value txns')))
 
 
